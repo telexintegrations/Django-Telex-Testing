@@ -105,6 +105,12 @@ LOGGING = {
     },
 }
 
+MIDDLEWARE += [
+    "djangotelex.middleware.SlowQueryMiddleware",
+]
+
+SLOW_QUERY_THRESHOLD = 0.5  # Log queries that take longer than 0.5s
+
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
 

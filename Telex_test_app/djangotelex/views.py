@@ -42,6 +42,8 @@ def telex_integration(request):
             "author": "Hetty",
             "website": base_url,
             "settings": [
+                {"label": "Site-1", "type": "text", "required": True, "default": "https://github.com"},
+                {"label": "interval", "type": "text", "required": True, "default": "*****"},
                 {"label": "Slow Query Threshold", "type": "number", "required": False, "default": "0.5"},
                 {"label": "Max Complexity Score", "type": "number", "required": False, "default": "10"},
                 {"label": "Code Smell Sensitivity", "type": "text", "required": False, "default": "high"},
