@@ -1,7 +1,7 @@
 from django.urls import path
 from .views import get_errors
 from .views import telex_integration
-from .views import djangotelex_home, get_errors, telex_integration
+from .views import djangotelex_home
 
 urlpatterns = [
     path("", djangotelex_home, name="djangotelex_home"),  # Default route for /djangotelex/
