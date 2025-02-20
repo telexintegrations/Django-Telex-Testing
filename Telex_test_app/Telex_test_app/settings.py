@@ -25,9 +25,8 @@ SECRET_KEY = 'django-insecure-^1!tii#hm=r)z_rg8=m%+f&g69%w11_ycekw#it=h4k54tp4m(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [ '127.0.0.1', 'django-telex-testing.onrender.com']
 
-TELEX_APM_URL = "https://t9j7qsrt-8000.uks1.devtunnels.ms/"
 
 # Application definition
 
@@ -152,5 +151,5 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-
+CORS_ALLOW_ALL_ORIGINS = True  # Allows requests from any domain
 CORS_ALLOW_ORIGINS = ["http://staging.telextest.im", "http://telextest.im", "https://staging.telex.im", "https://telex.im"], # NB: telextest is a local url]
