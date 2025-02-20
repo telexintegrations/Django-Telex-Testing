@@ -55,3 +55,25 @@ def telex_integration(request):
     }
     
     return JsonResponse(integration_json)
+
+
+def tick(request):
+    """Fetches and returns error logs, performance metrics, and code quality results."""
+    if request.method == "GET":
+        errors = list(ErrorLog.objects.values("error_message", "level", "timestamp"))
+
+        performance_metrics = {
+            "avg_response_time": 120,
+            "slow_queries": 3,
+            "complexity_issues": 5
+        }
+
+        response_data = {
+            "errors": errors,
+            "performance": performance_metrics,
+            "status": "success"
+        }
+
+        return JsonResponse(response_data, safe=False)
+
+    return JsonResponse({"error": "Method not allowed"}, status=405)
