@@ -16,6 +16,7 @@ class ErrorTrackingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
 
+
     def __call__(self, request):
         try:
             response = self.get_response(request)
@@ -31,7 +32,7 @@ class ErrorTrackingMiddleware:
             )
 
             # Log error to a file
-            logger.error(f"Error at {request.path}: {e}\n{traceback.format_exc()}")
+            logger.errors(f"Error at {request.path}: {e}\n{traceback.format_exc()}")
 
             # Return JSON error response
             from django.http import JsonResponse
@@ -62,6 +63,7 @@ class ErrorLoggingMiddleware(MiddlewareMixin):
             details=traceback.format_exc()
         )
         return None  # Let Django handle the error normally
+
 
 class SlowQueryMiddleware(MiddlewareMixin):
     def process_request(self, request):

@@ -1,20 +1,18 @@
 
 from django.http import JsonResponse
 from .models import ErrorLog
-from django.conf import settings
 import datetime
 
-def djangotelex_home(request):
-    return JsonResponse({"message": "Welcome to Django Telex APM!"})
 
 def get_errors(request):
     errors = ErrorLog.objects.values("error_message", "level", "timestamp")
     return JsonResponse(list(errors), safe=False)
 
+
 def telex_integration(request):
     """API endpoint to provide integration details to Telex"""
-    
-    base_url = request.build_absolute_uri('/')[:-1]  # Get base URL dynamically
+ 
+    base_url = request.build_absolute_uri('/')[:-1]
 
     integration_json = {
         "data": {
@@ -24,7 +22,7 @@ def telex_integration(request):
             },
             "descriptions": {
                 "app_name": "Django_Telex",
-                "app_description": "Tracks errors, performance, and code quality in Django applications.",
+                "app_description": "Tracks errors, performance, and code quality inDjango applications.",
                 "app_logo": "https://imgur.com/a/KSEnvRb.png",
                 "app_url": base_url,
                 "background_color": "#ffffff"
@@ -38,6 +36,7 @@ def telex_integration(request):
                 "- Detects function complexity",
                 "- Identifies code smells"
             ],
+            "integration_type": "interval",
             "integration_category": "Development & Code Management",
             "author": "Hetty",
             "website": base_url,

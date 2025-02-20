@@ -4,10 +4,11 @@ from rest_framework.test import APIClient
 from djangotelex.models import ErrorLog
 from django.utils.timezone import now
 
+
 @pytest.mark.django_db
 def test_get_errors():
     """Test if API returns logged errors properly."""
-    
+
     client = APIClient()
 
     # Insert test error
@@ -17,7 +18,7 @@ def test_get_errors():
         timestamp=now()
     )
 
-    url = reverse("get_errors")  
+    url = reverse("get_errors")
     response = client.get(url)
 
     assert response.status_code == 200

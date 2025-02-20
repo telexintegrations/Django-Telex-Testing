@@ -2,10 +2,11 @@ import pytest
 from djangotelex.models import ErrorLog
 from django.utils.timezone import now
 
+
 @pytest.mark.django_db
 def test_error_logging():
     """Test if an error is successfully logged in the database."""
-    
+ 
     error = ErrorLog.objects.create(
         error_message="Test error",
         level="critical",
