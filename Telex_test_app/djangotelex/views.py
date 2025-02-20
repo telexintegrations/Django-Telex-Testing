@@ -17,8 +17,8 @@ def telex_integration(request):
     integration_json = {
         "data": {
             "date": {
-                "created_at": datetime.date.today().isoformat(),
-                "updated_at": datetime.date.today().isoformat()
+                "created_at": "2025-02-17",
+                "updated_at": "2025-02-17"
             },
             "descriptions": {
                 "app_name": "Django_Telex",
@@ -43,11 +43,11 @@ def telex_integration(request):
             "settings": [
                 {"label": "Site-1", "type": "text", "required": True, "default": "https://github.com"},
                 {"label": "interval", "type": "text", "required": True, "default": "*****"},
-                #{"label": "Slow Query Threshold", "type": "number", "required": False, "default": "0.5"},
-                #{"label": "Max Complexity Score", "type": "number", "required": False, "default": "10"},
-                #{"label": "Code Smell Sensitivity", "type": "text", "required": False, "default": "high"},
-                #{"label": "Error Threshold", "type": "number", "required": True, "default": "10" },
-                #{"label": "Performance Alert Threshold (ms)", "type": "number", "required": True, "default": "2000"}
+                {"label": "Slow Query Threshold", "type": "number", "required": False, "default": "0.5"},
+                {"label": "Max Complexity Score", "type": "number", "required": False, "default": "10"},
+                {"label": "Code Smell Sensitivity", "type": "text", "required": False, "default": "high"},
+                {"label": "Error Threshold", "type": "number", "required": True, "default": "10" },
+                {"label": "Performance Alert Threshold (ms)", "type": "number", "required": True, "default": "2000"}
             ],
             "target_url": "",
             "tick_url": f"{base_url}/tick"
