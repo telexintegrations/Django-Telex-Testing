@@ -2,7 +2,6 @@
 from django.http import JsonResponse, FileResponse
 from django.conf import settings
 from .models import ErrorLog
-import datetime
 import logging, requests
 
 
