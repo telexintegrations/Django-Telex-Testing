@@ -89,9 +89,9 @@ def tick(request):
     return JsonResponse({"error": "Method not allowed"}, status=405)
     """
 TELEX_WEBHOOK_URL = settings.TELEX_WEBHOOK_URL  # Ensure this is defined in settings.py
-
+"""
 def tick(request):
-    """Fetches and returns error logs, performance metrics, and code quality results."""
+    Fetches and returns error logs, performance metrics, and code quality results.
     if request.method == "GET":
         try:
             # Get the latest error logs
@@ -127,3 +127,44 @@ def tick(request):
             return JsonResponse({"error": "Internal Server Error"}, status=500, content_type="application/json")
 
     return JsonResponse({"error": "Method not allowed"}, status=405, content_type="application/json")
+
+    """
+
+def tick(request):
+    """Fetches and returns error logs, performance metrics, and code quality results."""
+    
+    if request.method != "GET":
+        return JsonResponse({"error": "Method not allowed"}, status=405)
+
+    try:
+        # Fetch the latest error logs safely
+        errors = list(ErrorLog.objects.values("error_message", "level", "timestamp")) if ErrorLog.objects.exists() else []
+
+        # Mock performance metrics (Replace with real data if available)
+        performance_metrics = {
+            "avg_response_time": 120,  # in milliseconds
+            "slow_queries": 3,
+            "complexity_issues": 5
+        }
+
+        # Response payload
+        response_data = {
+            "errors": errors,
+            "performance": performance_metrics,
+            "status": "success"
+        }
+
+        # Send data to Telex Webhook (only if URL is set)
+        if TELEX_WEBHOOK_URL:
+            try:
+                response = requests.post(TELEX_WEBHOOK_URL, json=response_data, timeout=5)
+                response.raise_for_status()  # Ensure it's a successful request
+                logger.info("Successfully sent data to Telex webhook")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Failed to send data to Telex webhook: {e}")
+        
+        return JsonResponse(response_data, safe=False, content_type="application/json")
+
+    except Exception as e:
+        logger.error(f"Unexpected error in tick: {e}", exc_info=True)
+        return JsonResponse({"error": "Internal Server Error", "details": str(e)}, status=500, content_type="application/json")
