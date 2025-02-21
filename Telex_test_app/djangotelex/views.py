@@ -1,7 +1,11 @@
 
-from django.http import JsonResponse
+from django.http import JsonResponse, FileResponse
 from .models import ErrorLog
 import datetime
+
+
+def get_logo():
+    return FileResponse("Track_logo.jpg")
 
 
 def get_errors(request):
@@ -50,7 +54,7 @@ def telex_integration(request):
                 {"label": "Performance Alert Threshold (ms)", "type": "number", "required": True, "default": "2000"}
             ],
             "target_url": "",
-            "tick_url": f"{base_url}/tick"
+            "tick_url": f"{base_url}/djangotelex/tick"
         }
     }
     
