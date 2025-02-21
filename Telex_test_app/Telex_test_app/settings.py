@@ -51,6 +51,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'djangotelex.middleware.ErrorTrackingMiddleware',
+    'djangotelex.middleware.SlowQueryMiddleware',
     'djangotelex.middleware.PerformanceMonitoringMiddleware',
 
 ]
@@ -93,7 +94,7 @@ LOGGING = {
         "file": {
             "level": "ERROR",
             "class": "logging.FileHandler",
-            "filename": "errors.log",
+            "filename": "errors.log",  # Ensure this path is writable
         },
     },
     "loggers": {
@@ -104,6 +105,10 @@ LOGGING = {
         },
     },
 }
+
+
+TELEX_WEBHOOK_URL = "https://ping.telex.im/v1/webhooks/01951330-037c-7b3f-98d3-ac3cbdea30c5"
+
 
 MIDDLEWARE += [
     "djangotelex.middleware.SlowQueryMiddleware",

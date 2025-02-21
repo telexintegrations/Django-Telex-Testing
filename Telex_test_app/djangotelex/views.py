@@ -1,8 +1,14 @@
 
 from django.http import JsonResponse, FileResponse
+from django.conf import settings
 from .models import ErrorLog
 import datetime
+import logging, requests
 
+# Create a logger instance
+logger = logging.getLogger(__name__)
+
+TELEX_WEBHOOK_URL = getattr(settings, "TELEX_WEBHOOK_URL", "https://ping.telex.im/v1/webhooks/01951330-037c-7b3f-98d3-ac3cbdea30c5")
 
 def get_logo():
     return FileResponse("Track_logo.jpg")
@@ -60,9 +66,9 @@ def telex_integration(request):
     
     return JsonResponse(integration_json)
 
-
+"""
 def tick(request):
-    """Fetches and returns error logs, performance metrics, and code quality results."""
+    Fetches and returns error logs, performance metrics, and code quality results.
     if request.method == "GET":
         errors = list(ErrorLog.objects.values("error_message", "level", "timestamp"))
 
@@ -81,3 +87,43 @@ def tick(request):
         return JsonResponse(response_data, safe=False)
 
     return JsonResponse({"error": "Method not allowed"}, status=405)
+    """
+TELEX_WEBHOOK_URL = settings.TELEX_WEBHOOK_URL  # Ensure this is defined in settings.py
+
+def tick(request):
+    """Fetches and returns error logs, performance metrics, and code quality results."""
+    if request.method == "GET":
+        try:
+            # Get the latest error logs
+            errors = list(ErrorLog.objects.values("error_message", "level", "timestamp"))
+
+            # Mock performance metrics (Replace with real data if available)
+            performance_metrics = {
+                "avg_response_time": 120,  # in milliseconds
+                "slow_queries": 3,
+                "complexity_issues": 5
+            }
+
+            # Combine data for response and webhook
+            response_data = {
+                "errors": errors,
+                "performance": performance_metrics,
+                "status": "success"
+            }
+
+            # Send data to Telex Webhook
+            try:
+                response = requests.post(TELEX_WEBHOOK_URL, json=response_data, timeout=5)
+                response.raise_for_status()  # Raise an error for bad responses (4xx, 5xx)
+                logger.info("Successfully sent data to Telex webhook")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Failed to send data to Telex webhook: {e}")
+
+            # Ensure the response is JSON with proper content type
+            return JsonResponse(response_data, safe=False, content_type="application/json")
+
+        except Exception as e:
+            logger.error(f"Error in tick function: {e}")
+            return JsonResponse({"error": "Internal Server Error"}, status=500, content_type="application/json")
+
+    return JsonResponse({"error": "Method not allowed"}, status=405, content_type="application/json")
