@@ -5,6 +5,7 @@ from .models import ErrorLog
 import datetime
 import logging, requests
 
+
 # Create a logger instance
 logger = logging.getLogger(__name__)
 
