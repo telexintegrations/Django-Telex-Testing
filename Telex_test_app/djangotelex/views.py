@@ -1,6 +1,6 @@
 import json
 import logging
-import requests
+import requests, datetime
 from django.http import JsonResponse, FileResponse
 from django.conf import settings
 from .models import ErrorLog
@@ -70,16 +70,21 @@ def telex_integration(request):
 
 
 def tick(request):
-    """Fetches error logs, real performance metrics, and code quality analysis.
+    """Fetches error logs, performance metrics, and code quality analysis.
        Sends results to a return_url if provided.
     """
     try:
-        # Get latest error logs
+        # Get latest error logs and convert timestamp to string
         errors = list(
             ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
         )
+        
+        # Convert `timestamp` field to ISO format
+        for error in errors:
+            if isinstance(error["timestamp"], datetime):
+                error["timestamp"] = error["timestamp"].isoformat()
 
-        # Extract performance metrics from middleware
+        # Extract performance metrics
         slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
         slow_queries = [
             query for query in connection.queries if float(query.get("time", 0)) > slow_query_threshold
@@ -108,17 +113,19 @@ def tick(request):
         }
 
         # Check if return_url is provided in the request body
-        if request.method == "POST":
+        if request.method == "POST" and request.body:
             try:
-                body = json.loads(request.body)
+                body = json.loads(request.body.decode("utf-8"))
                 return_url = body.get("return_url")
 
                 if return_url:
                     response = requests.post(return_url, json=response_data, timeout=5)
                     logger.info(f"Return URL response: {response.status_code}, {response.text}")
 
-            except (json.JSONDecodeError, requests.RequestException) as e:
-                logger.error(f"Error processing return_url: {e}")
+            except json.JSONDecodeError:
+                logger.error("Invalid JSON in request body.")
+            except requests.RequestException as e:
+                logger.error(f"Failed to send data to return_url: {e}")
 
         return JsonResponse(response_data, safe=False, status=202)
 
