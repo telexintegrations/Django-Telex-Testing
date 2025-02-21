@@ -242,3 +242,7 @@ TypeError: Object of type datetime is not JSON serializable
 "GET /djangotelex/tick HTTP/1.1" 500 170411
 Internal Server Error: /djangotelex/tick
 "GET /djangotelex/tick HTTP/1.1" 500 34
+Internal Server Error: /djangotelex/tick
+"GET /djangotelex/tick HTTP/1.1" 500 97
+Internal Server Error: /djangotelex/tick
+"GET /djangotelex/tick HTTP/1.1" 500 97
