@@ -1,7 +1,8 @@
 import json
 import logging
-import requests, datetime
-from django.http import JsonResponse, FileResponse
+import requests
+from django.http import JsonResponse
+from datetime import datetime
 from django.conf import settings
 from .models import ErrorLog
 from django.views.decorators.csrf import csrf_exempt

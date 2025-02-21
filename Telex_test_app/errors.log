@@ -246,3 +246,5 @@ Internal Server Error: /djangotelex/tick
 "GET /djangotelex/tick HTTP/1.1" 500 97
 Internal Server Error: /djangotelex/tick
 "GET /djangotelex/tick HTTP/1.1" 500 97
+Internal Server Error: /djangotelex/tick
+"POST /djangotelex/tick HTTP/1.1" 500 97
