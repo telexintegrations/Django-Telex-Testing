@@ -72,30 +72,3 @@ class SlowQueryMiddleware(MiddlewareMixin):
 
         return response
 
-"""
-class PerformanceAndQueryMiddleware(MiddlewareMixin):
-    Middleware to track request processing time and log slow queries
-
-    def process_request(self, request):
-        request._start_time = time.time()
-
-    def process_response(self, request, response):
-        duration = time.time() - request._start_time
-        slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
-
-        # Log request performance
-        logger.info(
-            f"Request to {request.path} [{request.method}] by {getattr(request, 'user', 'Anonymous')} "
-            f"took {duration:.4f} seconds - Status: {response.status_code}"
-        )
-
-        # Log slow queries
-        for query in connection.queries:
-            query_time = float(query.get("time", 0))
-            if query_time > slow_query_threshold:
-                logger.warning(
-                    f"Slow Query on {request.path} [{request.method}]: {query['sql']} took {query_time}s"
-                )
-
-        return response
-        """

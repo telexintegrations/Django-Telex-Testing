@@ -1,19 +1,9 @@
-
 from django.http import JsonResponse, FileResponse
 from django.conf import settings
 from .models import ErrorLog
-import logging, requests, datetime
-
-
-# Create a logger instance
-logger = logging.getLogger(__name__)
-
-TELEX_WEBHOOK_URL = settings.TELEX_WEBHOOK_URL  # Ensure this is defined in settings.py
-
-TELEX_WEBHOOK_URL = getattr(settings, "TELEX_WEBHOOK_URL", "https://ping.telex.im/v1/webhooks/01951330-037c-7b3f-98d3-ac3cbdea30c5")
-
-def get_logo():
-    return FileResponse("Track_logo.jpg")
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_POST
+from django.db import connection
 
 
 def get_errors(request):
@@ -69,42 +59,43 @@ def telex_integration(request):
     return JsonResponse(integration_json)
 
 
+@csrf_exempt  # Allows external calls if needed
+@require_POST  # Ensures only POST requests are accepted
+
 def tick(request):
-    """Fetches and returns error logs, performance metrics, and code quality results."""
-    if request.method == "GET":
-        # Get the latest error logs
-        errors = list(
-            ErrorLog.objects.values("error_message", "level", "timestamp")
-        )
+    """Fetches error logs, real performance metrics, and code quality analysis."""
 
-        # Convert timestamp from datetime to ISO format
-        for error in errors:
-            if isinstance(error["timestamp"], datetime.datetime):
-                error["timestamp"] = error["timestamp"].isoformat()
+    # Get latest error logs
+    errors = list(
+        ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
+    )
 
-        # Mock performance metrics (Replace with real data if available)
-        performance_metrics = {
-            "avg_response_time": 120,  # in milliseconds
-            "slow_queries": 3,
-            "complexity_issues": 5
-        }
+    # Extract performance metrics from middleware
+    slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
+    slow_queries = [
+        query for query in connection.queries if float(query.get("time", 0)) > slow_query_threshold
+    ]
+    avg_response_time = sum(float(q.get("time", 0)) for q in connection.queries) / max(len(connection.queries), 1)
+    
+    performance_metrics = {
+        "avg_response_time": round(avg_response_time * 1000, 2),  # Convert to milliseconds
+        "slow_queries": len(slow_queries),
+        "db_connection_status": "healthy" if connection.connection else "unavailable"
+    }
 
-        # Combine data for response and webhook
-        response_data = {
-            "errors": errors,
-            "performance": performance_metrics,
-            "status": "success"
-        }
+    # Mock Code Quality Analysis
+    code_quality = {
+        "complexity_issues": 3,   
+        "code_smells": 5,
+        "test_coverage": "85%"
+    }
 
-        # Send data to Telex Webhook
-        try:
-            response = requests.post(TELEX_WEBHOOK_URL, json=response_data, timeout=5)
-            response.raise_for_status()
-            logging.info("Successfully sent data to Telex webhook")
-        except requests.exceptions.RequestException as e:
-            logging.error(f"Failed to send data to Telex webhook: {e}")
+    # Combine and return all data
+    response_data = {
+        "errors": errors,
+        "performance": performance_metrics,
+        "code_quality": code_quality,
+        "status": "success"
+    }
 
-        return JsonResponse(response_data, safe=False)
-
-    return JsonResponse({"error": "Method not allowed"}, status=405)
-
+    return JsonResponse(response_data, safe=False, status=202)
