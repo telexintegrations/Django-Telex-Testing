@@ -9,6 +9,7 @@ from .models import ErrorLog
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.db import connection
+from djangotelex.tasks import send_to_return_url
 
 
 
@@ -70,15 +71,17 @@ def telex_integration(request):
 @csrf_exempt  # Allows external calls if needed
 @require_POST  # Ensures only POST requests are accepted
 
+
 def tick(request):
-    """Fetches error logs, performance metrics, and code quality analysis asynchronously."""
+    """Fetches error logs, performance metrics, and code quality analysis."""
     try:
-        # Fetch recent logs (limit to 100 to prevent slow queries)
+        # Fetch recent error logs (limit to 100)
         errors = list(
             ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
             .order_by("-timestamp")[:100]
         )
 
+        # Convert timestamps to ISO format
         for error in errors:
             if isinstance(error["timestamp"], datetime):
                 error["timestamp"] = error["timestamp"].isoformat()
@@ -91,7 +94,7 @@ def tick(request):
         avg_response_time = sum(float(q.get("time", 0)) for q in connection.queries) / max(len(connection.queries), 1)
 
         performance_metrics = {
-            "avg_response_time": round(avg_response_time * 1000, 2),
+            "avg_response_time": round(avg_response_time * 1000, 2),  # Convert to milliseconds
             "slow_queries": len(slow_queries),
             "db_connection_status": "healthy" if connection.connection else "unavailable"
         }
@@ -103,7 +106,7 @@ def tick(request):
             "test_coverage": "85%"
         }
 
-        # Prepare response data
+        # Prepare final response data
         response_data = {
             "errors": errors,
             "performance": performance_metrics,
@@ -111,23 +114,13 @@ def tick(request):
             "status": "success"
         }
 
-        # Handle return_url asynchronously
-        if request.method == "POST" and request.body:
-            try:
-                body = json.loads(request.body.decode("utf-8"))
-                return_url = body.get("return_url")
-
-                if return_url:
-                    async_task("djangotelex.tasks.send_to_return_url", return_url, response_data)
-
-            except json.JSONDecodeError:
-                logger.error("Invalid JSON in request body.")
-
-        return JsonResponse({"status": "accepted", "message": "Processing in background"}, status=202)
+        # Return JSON immediately
+        return JsonResponse(response_data, status=200)
 
     except Exception as e:
         logger.error(f"Unexpected error in tick: {e}")
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+
 """
 def tick(request):
     Fetches error logs, performance metrics, and code quality analysis.
