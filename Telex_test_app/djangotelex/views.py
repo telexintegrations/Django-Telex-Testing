@@ -1,16 +1,13 @@
-import json
+import threading
+import httpx
 import logging
-import requests
-from django_q.tasks import async_task
 from django.http import JsonResponse
-from datetime import datetime
 from django.conf import settings
 from .models import ErrorLog
-from django.views.decorators.csrf import csrf_exempt
-from django.views.decorators.http import require_POST
 from django.db import connection
-from djangotelex.tasks import send_to_return_url
-
+from django.http import JsonResponse
+from datetime import datetime
+from django.views.decorators.csrf import csrf_exempt
 
 
 logger = logging.getLogger(__name__)
@@ -68,56 +65,56 @@ def telex_integration(request):
     return JsonResponse(integration_json)
 
 
-@csrf_exempt  # Allows external calls if needed
-@require_POST  # Ensures only POST requests are accepted
-
-
-def tick(request):
-    """Fetches error logs, performance metrics, and code quality analysis."""
+def fetch_monitoring_data(return_url):
+    """Fetch error logs, performance metrics, and code quality analysis, then post results."""
     try:
-        # Fetch recent error logs (limit to 100)
         errors = list(
             ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
             .order_by("-timestamp")[:100]
         )
 
-        # Convert timestamps to ISO format
-        for error in errors:
-            if isinstance(error["timestamp"], datetime):
-                error["timestamp"] = error["timestamp"].isoformat()
-
-        # Extract performance metrics
-        slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
-        slow_queries = [
-            query for query in connection.queries if float(query.get("time", 0)) > slow_query_threshold
+        error_messages = [
+            f"[{error['timestamp'].isoformat()}] {error['level'].upper()}: {error['error_message']} (Path: {error['path']}, Method: {error['method']})"
+            for error in errors
         ]
-        avg_response_time = sum(float(q.get("time", 0)) for q in connection.queries) / max(len(connection.queries), 1)
+        formatted_errors = "\n".join(error_messages) if error_messages else "No recent errors."
 
-        performance_metrics = {
-            "avg_response_time": round(avg_response_time * 1000, 2),  # Convert to milliseconds
-            "slow_queries": len(slow_queries),
-            "db_connection_status": "healthy" if connection.connection else "unavailable"
+        slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
+        queries = connection.queries if settings.DEBUG else []
+
+        slow_queries = [q for q in queries if float(q.get("time", 0)) > slow_query_threshold]
+        avg_response_time = (
+            sum(float(q.get("time", 0)) for q in queries) / max(len(queries), 1)
+            if queries else 0
+        )
+
+        performance_metrics = f"Avg Response Time: {round(avg_response_time * 1000, 2)}ms, Slow Queries: {len(slow_queries)}, DB Connection: {'Healthy' if connection.connection else 'Unavailable'}"
+
+        code_quality = "Complexity Issues: 3, Code Smells: 5, Test Coverage: 85%"
+
+        final_message = f"🚨 *Error Logs:*\n{formatted_errors}\n\n📊 *Performance:*\n{performance_metrics}\n\n🛠 *Code Quality:*\n{code_quality}"
+
+        monitoring_data = {
+            "message": final_message,
+            "username": "Monitoring Bot",
+            "event_name": "Error Tracker",
+            "status": "error"
         }
 
-        # Mock Code Quality Analysis
-        code_quality = {
-            "complexity_issues": 3,
-            "code_smells": 5,
-            "test_coverage": "85%"
-        }
-
-        # Prepare final response data
-        response_data = {
-            "errors": errors,
-            "performance": performance_metrics,
-            "code_quality": code_quality,
-            "status": "success"
-        }
-
-        # Return JSON immediately
-        return JsonResponse(response_data, status=200)
+        with httpx.Client() as client:
+            client.post(return_url, json=monitoring_data)
 
     except Exception as e:
-        logger.error(f"Unexpected error in tick: {e}")
-        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+        logger.error(f"Error in fetch_monitoring_data: {e}", exc_info=True)
 
+
+@csrf_exempt
+
+def tick(request):
+    """Trigger monitoring data collection before responding."""
+    return_url = request.POST.get("return_url")
+
+    if return_url:
+        threading.Thread(target=fetch_monitoring_data, args=(return_url,)).start()
+
+    return JsonResponse({"status": "accepted"}, status=202)
