@@ -39,7 +39,20 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'djangotelex',
+    'django_q',
 ]
+
+
+Q_CLUSTER = {
+    "name": "DjangoQ",
+    "workers": 4,  # Number of worker processes
+    "timeout": 60,  # Max execution time per task (seconds)
+    "retry": 90,  # Time before a failed task is retried
+    "queue_limit": 50,  # Max number of tasks in queue
+    "bulk": 10,  # Number of tasks processed in a batch
+    "orm": "default",  # Use ORM instead of Redis
+}
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -86,6 +99,7 @@ DATABASES = {
         'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
+
 
 LOGGING = {
     "version": 1,

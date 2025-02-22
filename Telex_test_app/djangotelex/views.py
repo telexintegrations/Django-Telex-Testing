@@ -1,6 +1,7 @@
 import json
 import logging
 import requests
+from django_q.tasks import async_task
 from django.http import JsonResponse
 from datetime import datetime
 from django.conf import settings
@@ -69,11 +70,69 @@ def telex_integration(request):
 @csrf_exempt  # Allows external calls if needed
 @require_POST  # Ensures only POST requests are accepted
 
-
 def tick(request):
-    """Fetches error logs, performance metrics, and code quality analysis.
+    """Fetches error logs, performance metrics, and code quality analysis asynchronously."""
+    try:
+        # Fetch recent logs (limit to 100 to prevent slow queries)
+        errors = list(
+            ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
+            .order_by("-timestamp")[:100]
+        )
+
+        for error in errors:
+            if isinstance(error["timestamp"], datetime):
+                error["timestamp"] = error["timestamp"].isoformat()
+
+        # Extract performance metrics
+        slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
+        slow_queries = [
+            query for query in connection.queries if float(query.get("time", 0)) > slow_query_threshold
+        ]
+        avg_response_time = sum(float(q.get("time", 0)) for q in connection.queries) / max(len(connection.queries), 1)
+
+        performance_metrics = {
+            "avg_response_time": round(avg_response_time * 1000, 2),
+            "slow_queries": len(slow_queries),
+            "db_connection_status": "healthy" if connection.connection else "unavailable"
+        }
+
+        # Mock Code Quality Analysis
+        code_quality = {
+            "complexity_issues": 3,
+            "code_smells": 5,
+            "test_coverage": "85%"
+        }
+
+        # Prepare response data
+        response_data = {
+            "errors": errors,
+            "performance": performance_metrics,
+            "code_quality": code_quality,
+            "status": "success"
+        }
+
+        # Handle return_url asynchronously
+        if request.method == "POST" and request.body:
+            try:
+                body = json.loads(request.body.decode("utf-8"))
+                return_url = body.get("return_url")
+
+                if return_url:
+                    async_task("djangotelex.tasks.send_to_return_url", return_url, response_data)
+
+            except json.JSONDecodeError:
+                logger.error("Invalid JSON in request body.")
+
+        return JsonResponse({"status": "accepted", "message": "Processing in background"}, status=202)
+
+    except Exception as e:
+        logger.error(f"Unexpected error in tick: {e}")
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+"""
+def tick(request):
+    Fetches error logs, performance metrics, and code quality analysis.
        Sends results to a return_url if provided.
-    """
+    
     try:
         # Get latest error logs and convert timestamp to string
         errors = list(
@@ -133,3 +192,4 @@ def tick(request):
     except Exception as e:
         logger.error(f"Unexpected error in tick: {e}")
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
+        """
