@@ -53,7 +53,7 @@ def telex_integration(request):
             "website": base_url,
             "settings": [
                 {"label": "Site-1", "type": "text", "required": True, "default": "https://github.com"},
-                {"label": "interval", "type": "text", "required": True, "default": "*/1****"},
+                {"label": "interval", "type": "text", "required": True, "default": "*/1 * * * *"},
                 {"label": "Slow Query Threshold", "type": "number", "required": False, "default": "0.5"},
                 {"label": "Max Complexity Score", "type": "number", "required": False, "default": "10"},
                 {"label": "Code Smell Sensitivity", "type": "text", "required": False, "default": "high"},
@@ -121,68 +121,3 @@ def tick(request):
         logger.error(f"Unexpected error in tick: {e}")
         return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
-"""
-def tick(request):
-    Fetches error logs, performance metrics, and code quality analysis.
-       Sends results to a return_url if provided.
-    
-    try:
-        # Get latest error logs and convert timestamp to string
-        errors = list(
-            ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
-        )
-        
-        # Convert `timestamp` field to ISO format
-        for error in errors:
-            if isinstance(error["timestamp"], datetime):
-                error["timestamp"] = error["timestamp"].isoformat()
-
-        # Extract performance metrics
-        slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
-        slow_queries = [
-            query for query in connection.queries if float(query.get("time", 0)) > slow_query_threshold
-        ]
-        avg_response_time = sum(float(q.get("time", 0)) for q in connection.queries) / max(len(connection.queries), 1)
-
-        performance_metrics = {
-            "avg_response_time": round(avg_response_time * 1000, 2),  # Convert to milliseconds
-            "slow_queries": len(slow_queries),
-            "db_connection_status": "healthy" if connection.connection else "unavailable"
-        }
-
-        # Mock Code Quality Analysis
-        code_quality = {
-            "complexity_issues": 3,   
-            "code_smells": 5,
-            "test_coverage": "85%"
-        }
-
-        # Combine all data
-        response_data = {
-            "errors": errors,
-            "performance": performance_metrics,
-            "code_quality": code_quality,
-            "status": "success"
-        }
-
-        # Check if return_url is provided in the request body
-        if request.method == "POST" and request.body:
-            try:
-                body = json.loads(request.body.decode("utf-8"))
-                return_url = body.get("return_url")
-
-                if return_url:
-                    response = requests.post(return_url, json=response_data, timeout=5)
-                    logger.info(f"Return URL response: {response.status_code}, {response.text}")
-
-            except json.JSONDecodeError:
-                logger.error("Invalid JSON in request body.")
-            except requests.RequestException as e:
-                logger.error(f"Failed to send data to return_url: {e}")
-
-        return JsonResponse(response_data, safe=False, status=202)
-
-    except Exception as e:
-        logger.error(f"Unexpected error in tick: {e}")
-        return JsonResponse({"status": "error", "message": str(e)}, status=500)
-        """
