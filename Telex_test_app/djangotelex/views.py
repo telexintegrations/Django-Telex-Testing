@@ -18,9 +18,7 @@ def get_errors(request):
 
 
 def telex_integration(request):
-    """API endpoint to provide integration details to Telex"""
- 
-    base_url = request.build_absolute_uri('/')[:-1]
+    base_url = request.build_absolute_uri("/")[:-1]  # Get base URL dynamically
 
     integration_json = {
         "data": {
@@ -31,7 +29,7 @@ def telex_integration(request):
             "descriptions": {
                 "app_name": "Django_Telex",
                 "app_description": "Tracks errors, performance, and code quality in Django applications.",
-                "app_logo": "https://imgur.com/a/KSEnvRb.png",
+                "app_logo": "https://image.shutterstock.com/image-vector/virus-scan-icon-vector-260nw-97752401.jpg",
                 "app_url": base_url,
                 "background_color": "#ffffff"
             },
@@ -44,7 +42,6 @@ def telex_integration(request):
                 "- Detects function complexity",
                 "- Identifies code smells"
             ],
-            "integration_type": "interval",
             "integration_category": "Development & Code Management",
             "author": "Hetty",
             "website": base_url,
@@ -54,14 +51,14 @@ def telex_integration(request):
                 {"label": "Slow Query Threshold", "type": "number", "required": False, "default": "0.5"},
                 {"label": "Max Complexity Score", "type": "number", "required": False, "default": "10"},
                 {"label": "Code Smell Sensitivity", "type": "text", "required": False, "default": "high"},
-                {"label": "Error Threshold", "type": "number", "required": True, "default": "10" },
+                {"label": "Error Threshold", "type": "number", "required": True, "default": "10"},
                 {"label": "Performance Alert Threshold (ms)", "type": "number", "required": True, "default": "2000"}
             ],
             "target_url": "",
             "tick_url": f"{base_url}/djangotelex/tick"
         }
     }
-    
+
     return JsonResponse(integration_json)
 
 

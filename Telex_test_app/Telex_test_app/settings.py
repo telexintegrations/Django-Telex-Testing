@@ -9,7 +9,6 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-^1!tii#hm=r)z_rg8=m%+f&g69%w11_ycekw#it=h4k54tp4m('
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = [ '127.0.0.1', 'django-telex-testing.onrender.com']
 
@@ -39,19 +38,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'djangotelex',
-    'django_q',
+    
 ]
-
-
-Q_CLUSTER = {
-    "name": "DjangoQ",
-    "workers": 4,  # Number of worker processes
-    "timeout": 60,  # Max execution time per task (seconds)
-    "retry": 90,  # Time before a failed task is retried
-    "queue_limit": 50,  # Max number of tasks in queue
-    "bulk": 10,  # Number of tasks processed in a batch
-    "orm": "default",  # Use ORM instead of Redis
-}
 
 
 MIDDLEWARE = [
@@ -121,8 +109,6 @@ LOGGING = {
 }
 
 
-TELEX_WEBHOOK_URL = "https://ping.telex.im/v1/webhooks/01951330-037c-7b3f-98d3-ac3cbdea30c5"
-
 
 MIDDLEWARE += [
     "djangotelex.middleware.SlowQueryMiddleware",
@@ -164,7 +150,11 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.1/howto/static-files/
 
-STATIC_URL = 'static/'
+
+STATIC_URL = "/static/"
+
+# Enable WhiteNoise compression and caching
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.1/ref/settings/#default-auto-field
