@@ -22,6 +22,9 @@ def get_errors(request):
 def telex_integration(request):
     base_url = request.build_absolute_uri("/")[:-1]  # Get base URL dynamically
 
+    # Fetch real-time monitoring data
+    final_message = fetch_monitoring_data()  # Call function to get the latest data
+
     integration_json = {
         "data": {
             "date": {
@@ -47,14 +50,16 @@ def telex_integration(request):
             "integration_category": "Development & Code Management",
             "author": "Hetty",
             "website": base_url,
+            "output": [
+                {
+                    "label": "channel",
+                    "value": True
+                }
+            ],
             "settings": [
                 {"label": "Site-1", "type": "text", "required": True, "default": "https://github.com"},
-                {"label": "interval", "type": "text", "required": True, "default": "* */1 * * *"},
-                {"label": "Slow Query Threshold", "type": "number", "required": False, "default": "0.5"},
-                {"label": "Max Complexity Score", "type": "number", "required": False, "default": "10"},
-                {"label": "Code Smell Sensitivity", "type": "text", "required": False, "default": "high"},
-                {"label": "Error Threshold", "type": "number", "required": True, "default": "10"},
-                {"label": "Performance Alert Threshold (ms)", "type": "number", "required": True, "default": "2000"}
+                {"label": "interval", "type": "text", "required": True, "default": "*/20 * * * *"},
+                {"label": "Django Tracker", "type": "text", "required": False, "default": final_message},
             ],
             "target_url": "",
             "tick_url": f"{base_url}/djangotelex/tick"
@@ -65,12 +70,12 @@ def telex_integration(request):
 
 
 def fetch_monitoring_data():
-    """Fetch error logs, performance metrics, and code quality analysis, then post results."""
+    """Fetch error logs, performance metrics, and code quality analysis, then return results."""
     try:
         telex_webhook_url = os.getenv("TELEX_WEBHOOK_URL")
         if not telex_webhook_url:
             logger.error("Telex Webhook URL is not set in environment variables.")
-            return
+            return "Telex Webhook URL not configured."
 
         logger.info(f"Fetching monitoring data for {telex_webhook_url}")
 
@@ -113,9 +118,11 @@ def fetch_monitoring_data():
             response = client.post(telex_webhook_url, json=monitoring_data)
             logger.info(f"Response from {telex_webhook_url}: {response.status_code}, {response.text}")
 
+        return final_message  # Return the constructed message
+
     except Exception as e:
         logger.error(f"Error in fetch_monitoring_data: {e}", exc_info=True)
-
+        return "Error retrieving monitoring data."
 
 
 @csrf_exempt
