@@ -42,7 +42,7 @@ MIDDLEWARE = [
     'djangotelex.middleware.SlowQueryMiddleware',
 ]
 
-SLOW_QUERY_THRESHOLD = 0.5  # Adjust the threshold for slow queries (in seconds)
+SLOW_QUERY_THRESHOLD = 0.5 
 ```
 
 ## API Usage
@@ -96,7 +96,7 @@ from django.http import JsonResponse
 def slow_query_test(request):
     time.sleep(2)  # Simulate a slow request
     with connection.cursor() as cursor:
-        cursor.execute("SELECT pg_sleep(1);")  # PostgreSQL example
+        cursor.execute("SELECT pg_sleep(1);")
     return JsonResponse({"message": "Slow query test completed"})
 ```
 Call the endpoint:
