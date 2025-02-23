@@ -102,7 +102,7 @@ def fetch_monitoring_data():
         monitoring_data = {
             "message": final_message,
             "username": "Django Tracker",
-            "event_name": "Error Tracker",
+            "event_name": "Reports",
             "status": "error"
         }
 
