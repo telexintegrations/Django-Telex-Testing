@@ -59,7 +59,7 @@ def telex_integration(request):
             "settings": [
                 {"label": "Site-1", "type": "text", "required": True, "default": "https://github.com"},
                 {"label": "interval", "type": "text", "required": True, "default": "*/20 * * * *"},
-                {"label": "Django Tracker", "type": "text", "required": False, "default": final_message},
+                {"label": "Django Tracker", "type": "text", "required": False, "default": "final_message"},
             ],
             "target_url": "",
             "tick_url": f"{base_url}/djangotelex/tick"
