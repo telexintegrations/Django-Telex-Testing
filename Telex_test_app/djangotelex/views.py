@@ -1,4 +1,4 @@
-import threading
+import os, threading
 import httpx
 import logging
 from django.http import JsonResponse
@@ -8,7 +8,9 @@ from django.db import connection
 from django.http import JsonResponse
 from datetime import datetime
 from django.views.decorators.csrf import csrf_exempt
+from dotenv import load_dotenv
 
+load_dotenv()  # Load environment variables
 
 logger = logging.getLogger(__name__)
 
@@ -62,33 +64,39 @@ def telex_integration(request):
     return JsonResponse(integration_json)
 
 
-def fetch_monitoring_data(return_url):
+def fetch_monitoring_data():
     """Fetch error logs, performance metrics, and code quality analysis, then post results."""
     try:
+        telex_webhook_url = os.getenv("TELEX_WEBHOOK_URL")
+        if not telex_webhook_url:
+            logger.error("Telex Webhook URL is not set in environment variables.")
+            return
+
+        logger.info(f"Fetching monitoring data for {telex_webhook_url}")
+
+        # Collect errors
         errors = list(
             ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
             .order_by("-timestamp")[:100]
         )
-
         error_messages = [
             f"[{error['timestamp'].isoformat()}] {error['level'].upper()}: {error['error_message']} (Path: {error['path']}, Method: {error['method']})"
             for error in errors
         ]
         formatted_errors = "\n".join(error_messages) if error_messages else "No recent errors."
 
+        # Collect performance data
         slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
         queries = connection.queries if settings.DEBUG else []
-
         slow_queries = [q for q in queries if float(q.get("time", 0)) > slow_query_threshold]
-        avg_response_time = (
-            sum(float(q.get("time", 0)) for q in queries) / max(len(queries), 1)
-            if queries else 0
-        )
+        avg_response_time = sum(float(q.get("time", 0)) for q in queries) / max(len(queries), 1) if queries else 0
 
         performance_metrics = f"Avg Response Time: {round(avg_response_time * 1000, 2)}ms, Slow Queries: {len(slow_queries)}, DB Connection: {'Healthy' if connection.connection else 'Unavailable'}"
 
+        # Static code quality (example values)
         code_quality = "Complexity Issues: 3, Code Smells: 5, Test Coverage: 85%"
 
+        # Construct final message
         final_message = f"🚨 *Error Logs:*\n{formatted_errors}\n\n📊 *Performance:*\n{performance_metrics}\n\n🛠 *Code Quality:*\n{code_quality}"
 
         monitoring_data = {
@@ -98,20 +106,21 @@ def fetch_monitoring_data(return_url):
             "status": "error"
         }
 
+        logger.info(f"Prepared monitoring data: {monitoring_data}")
+
+        # Send data
         with httpx.Client() as client:
-            client.post(return_url, json=monitoring_data)
+            response = client.post(telex_webhook_url, json=monitoring_data)
+            logger.info(f"Response from {telex_webhook_url}: {response.status_code}, {response.text}")
 
     except Exception as e:
         logger.error(f"Error in fetch_monitoring_data: {e}", exc_info=True)
+
 
 
 @csrf_exempt
 
 def tick(request):
     """Trigger monitoring data collection before responding."""
-    return_url = request.POST.get("return_url")
-
-    if return_url:
-        threading.Thread(target=fetch_monitoring_data, args=(return_url,)).start()
-
+    threading.Thread(target=fetch_monitoring_data).start()
     return JsonResponse({"status": "accepted"}, status=202)
