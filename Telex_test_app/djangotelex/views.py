@@ -49,7 +49,7 @@ def telex_integration(request):
             "website": base_url,
             "settings": [
                 {"label": "Site-1", "type": "text", "required": True, "default": "https://github.com"},
-                {"label": "interval", "type": "text", "required": True, "default": "*/1 * * * *"},
+                {"label": "interval", "type": "text", "required": True, "default": "* * * * *"},
                 {"label": "Slow Query Threshold", "type": "number", "required": False, "default": "0.5"},
                 {"label": "Max Complexity Score", "type": "number", "required": False, "default": "10"},
                 {"label": "Code Smell Sensitivity", "type": "text", "required": False, "default": "high"},
@@ -101,7 +101,7 @@ def fetch_monitoring_data():
 
         monitoring_data = {
             "message": final_message,
-            "username": "Monitoring Bot",
+            "username": "Django Tracker",
             "event_name": "Error Tracker",
             "status": "error"
         }
