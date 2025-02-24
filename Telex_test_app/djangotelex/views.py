@@ -105,8 +105,8 @@ def fetch_github_commits(repo_url=None, access_token=None):
     except Exception as e:
         logger.error(f"Error fetching GitHub commits: {e}", exc_info=True)
 
-def send_telex_report():
-    """Send a predefined report to Telex webhook."""
+"""def send_telex_report():
+    Send a predefined report to Telex webhook.
     try:
         telex_webhook_url = os.getenv("TELEX_WEBHOOK_URL")
         if not telex_webhook_url:
@@ -142,6 +142,33 @@ def send_telex_report():
                 logger.info("Successfully sent repo health report to Telex.")
             else:
                 logger.error(f"Failed to send report to Telex: {response.status_code}, {response.text}")
+
+    except Exception as e:
+        logger.error(f"Error in send_telex_report: {e}", exc_info=True)"""
+def send_telex_report():
+    """Send a test report to Telex."""
+    try:
+        telex_webhook_url = os.getenv("TELEX_WEBHOOK_URL")
+        
+        if not telex_webhook_url:
+            logger.error("Telex Webhook URL is not set.")
+            return
+        
+        logger.info(f"Sending test report to {telex_webhook_url}")
+
+        report_payload = {
+            "message": "Test report from Django Telex APM.",
+            "username": "Django Telex APM",
+            "event_name": "Test Event",
+            "status": "info"
+        }
+
+        logger.debug(f"Payload: {json.dumps(report_payload, indent=2)}")
+
+        with httpx.Client() as client:
+            response = client.post(telex_webhook_url, json=report_payload)
+
+        logger.info(f"Response {response.status_code}: {response.text}")
 
     except Exception as e:
         logger.error(f"Error in send_telex_report: {e}", exc_info=True)
