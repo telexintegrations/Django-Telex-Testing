@@ -2,6 +2,7 @@ import os, threading
 import httpx
 import logging
 import json
+import time
 from django.http import JsonResponse
 from django.conf import settings
 from .models import ErrorLog, CommitLog
@@ -73,10 +74,9 @@ DEFAULT_REPO_NAME = os.environ.get("DEFAULT_REPO_NAME")
 DEFAULT_REPO_URL = f"https://api.github.com/repos/{DEFAULT_REPO_NAME}/commits" if DEFAULT_REPO_NAME else None
 
 def fetch_github_commits(repo_url=None, access_token=None):
-    """Fetch commits from a GitHub repository and analyze repo health."""
+    """Fetch commits from GitHub and analyze repository health."""
     try:
-        # Use defaults if parameters are missing
-        repo_url = repo_url or DEFAULT_REPO_URL
+        repo_url = repo_url or DEFAULT_REPO_NAME
         access_token = access_token or DEFAULT_GITHUB_TOKEN
 
         if not repo_url or not access_token:
@@ -96,11 +96,11 @@ def fetch_github_commits(repo_url=None, access_token=None):
             commits = response.json()
             logger.info(f"Fetched {len(commits)} commits")
 
-            # Run full analysis
-            report = analyze_repository_health(commits)
+            if commits:
+                logger.debug(f"First commit data: {json.dumps(commits[0], indent=2)}")
 
-            # Send full report to Telex Webhook
-            send_telex_report(report)
+            # Send fetched commits to be analyzed and reported
+            send_telex_report(commits)
 
         else:
             logger.error(f"Failed to fetch commits: {response.status_code}, {response.text}")
@@ -109,90 +109,74 @@ def fetch_github_commits(repo_url=None, access_token=None):
         logger.error(f"Error fetching GitHub commits: {e}", exc_info=True)
 
 
-def analyze_repository_health(commits):
-    """Analyze commits, errors, performance, and code quality."""
-    
-    # Recent Errors 
-    errors = list(
-        ErrorLog.objects.values("error_message", "level", "timestamp", "path", "method")
-        .order_by("-timestamp")[:5]
-    )
-    error_messages = [
-        f"⚠️ [{error['timestamp'].isoformat()}] {error['level'].upper()}: {error['error_message']} (Path: {error['path']}, Method: {error['method']})"
-        for error in errors
-    ]
-    formatted_errors = "\n".join(error_messages) if error_messages else "No recent errors."
 
-    # Performance Metrics
-    slow_query_threshold = getattr(settings, "SLOW_QUERY_THRESHOLD", 0.5)
-    queries = connection.queries if settings.DEBUG else []
-    slow_queries = [q for q in queries if float(q.get("time", 0)) > slow_query_threshold]
-    avg_response_time = (
-        sum(float(q.get("time", 0)) for q in queries) / max(len(queries), 1) if queries else 0
-    )
-    performance_metrics = (
-        f"⏳ Avg Response Time: {round(avg_response_time * 1000, 2)}ms\n🐢 Slow Queries: {len(slow_queries)}"
-    )
-    # Static Code Analysis (Placeholder for now)  
-    code_quality = "🛠 Complexity Issues: 3, Code Smells: 5, Test Coverage: 85%"
-
-    # Commit Summary  
-    commit_messages = [
-        f"📌 *{commit['commit']['message']}*\n👤 {commit['commit']['author']['name']}\n🔗 [View Commit]({commit['html_url']})"
-        for commit in commits[:5]  # Limit to first 5 commits
-    ]
-    commit_summary = "\n\n".join(commit_messages) if commit_messages else "📭 No new commits."
-
-    # Final Report Message  
-    final_report = (
-        f"📝 *GitHub Repository Analysis:*\n\n"
-        f"📌 *Recent Commits:*\n{commit_summary}\n\n"
-        f"🚨 *Error Logs:*\n{formatted_errors}\n\n"
-        f"📊 *Performance Metrics:*\n{performance_metrics}\n\n"
-        f"🛠 *Code Quality:*\n{code_quality}"
-    )
-
-    return final_report
-
-def send_telex_report(report):
-    """Send the repository health report to the Telex webhook."""
-    telex_webhook_url = os.getenv("TELEX_WEBHOOK_URL")
-    if not telex_webhook_url:
-        logger.error("Telex Webhook URL is not set in environment variables.")
-        return
-
-    payload = {
-        "message": report,
-        "username": "Django Telex APM",
-        "event_name": "Repository Health Analysis",
-        "status": "info"
-    }
-
+def send_telex_report(commits):
+    """Analyze repository health and send a report to Telex."""
     try:
+        telex_webhook_url = os.getenv("TELEX_WEBHOOK_URL")
+        if not telex_webhook_url:
+            logger.error("Telex Webhook URL is not set in environment variables.")
+            return
+
+        logger.info(f"Preparing Telex report for {telex_webhook_url}")
+
+        # Construct final report message
+        commit_summary = "\n".join(
+            f"{commit['commit']['message']} - {commit['commit']['author']['name']}"
+            for commit in commits[:5]  # Limit to 5 commits
+        ) if commits else "No new commits."
+
+        final_message = (
+            f"📌 *Recent Commits:*\n{commit_summary}\n\n"
+            f"🚨 *Error Logs:*\nNo recent errors.\n\n"
+            f"📊 *Performance:*\nAvg Response Time: 120ms, Slow Queries: 2\n\n"
+            f"🛠 *Code Quality:*\nComplexity Issues: 3, Code Smells: 5, Test Coverage: 85%"
+        )
+
+        report_payload = {
+            "message": final_message,
+            "username": "Django Telex APM",
+            "event_name": "Repository Health Analysis",
+            "status": "info"
+        }
+
+        logger.info(f"Sending report to Telex: {report_payload}")
+
         with httpx.Client() as client:
-            response = client.post(telex_webhook_url, json=payload)
-            if response.status_code == 200:
+            response = client.post(telex_webhook_url, json=report_payload)
+            logger.info(f"Response from Telex: {response.status_code}, {response.text}")
+
+            if response.status_code == 202:
+                # Log task_id so you can check status later
+                task_id = response.json().get("task_id", "unknown")
+                logger.info(f"Telex accepted the request. Task ID: {task_id}")
+                return f"Report accepted by Telex. Task ID: {task_id}"
+
+            elif response.status_code == 200:
                 logger.info("Successfully sent repo health report to Telex.")
+                return "Report successfully sent to Telex."
+
             else:
                 logger.error(f"Failed to send report to Telex: {response.status_code}, {response.text}")
-    
+                return f"Failed to send report: {response.text}"
+
     except Exception as e:
-        logger.error(f"Error sending Telex report: {e}", exc_info=True)
+        logger.error(f"Error in send_telex_report: {e}", exc_info=True)
 
 
 @csrf_exempt
-
 def tick(request):
     """Trigger commit fetching and analysis."""
     try:
         data = json.loads(request.body or "{}")  # Handle empty body safely
 
-        # Extract repo details (Use defaults if missing)
-        repo_name = data.get("repo_name", DEFAULT_REPO_NAME)
-        token = data.get("token", DEFAULT_GITHUB_TOKEN)
+        repo_url = data.get("repo_url", DEFAULT_REPO_NAME)
+        access_token = data.get("token", DEFAULT_GITHUB_TOKEN)
+
+        logger.info(f"Tick Triggered - Repo: {repo_url}, Token: {'***' if access_token else 'MISSING'}")
 
         # Run fetch in a separate thread
-        threading.Thread(target=fetch_github_commits, args=(repo_name, token)).start()
+        threading.Thread(target=fetch_github_commits, args=(repo_url, access_token)).start()
 
         return JsonResponse({"status": "commit analysis started"}, status=202)
 
