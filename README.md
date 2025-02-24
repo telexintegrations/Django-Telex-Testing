@@ -1,144 +1,108 @@
 # Django Telex APM
 
-Django Telex APM is an Application Performance Monitoring (APM) tool that tracks **errors, performance, slow queries, and code quality** in a Django backend. It integrates with **GitHub repositories** to analyze commits and sends reports to a **Telex webhook**.
+Django Telex APM is an **Application Performance Monitoring (APM) tool** that integrates with Django to track errors, performance metrics, slow database queries, and code quality. It sends monitoring reports to a configured Telex webhook.
 
 ## Features
-- **Error Tracking**: Captures and reports errors logged in Django.
-- **Performance Monitoring**: Tracks slow queries and response times.
-- **Code Quality Analysis**: Analyzes commit changes for code complexity and test coverage.
-- **GitHub Integration**: Fetches commits on demand and processes them for issues.
-- **Telex Webhook Reporting**: Sends reports to a configured Telex webhook.
+- 📌 **Error Tracking:** Captures Django application errors with timestamps and request details.
+- 🚀 **Performance Monitoring:** Tracks response times and identifies slow database queries.
+- 🔍 **Code Quality Analysis:** Detects function complexity, code smells, and test coverage.
+- 🌐 **Webhook Integration:** Sends monitoring reports to **Telex webhooks** for easy tracking.
 
 ---
 
 ## Installation
-
-### 1. Clone the Repository
-```sh
-$ git clone "https://github.com/telexintegrations/Django-Telex-Testing.git"
-$ cd Telex_test_app
+### 1️⃣ **Clone the Repository**
+```bash
+ git clone https://github.com/Samuelhetty/Django-Telex-Error-tracking-Apm.git
+ cd Django-Telex-Error-tracking-Apm
 ```
 
-### 2. Set Up a Virtual Environment
-```sh
-$ python -m venv venv
-$ source venv/bin/activate   # On Windows use: venv\Scripts\activate
+### 2️⃣ **Install Dependencies**
+```bash
+pip install -r requirements.txt
 ```
 
-### 3. Install Dependencies
-```sh
-$ pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
-Create a **.env** file and add the following:
+### 3️⃣ **Configure Environment Variables**
+Create a `.env` file in the project root and add:
 ```env
-GITHUB_ACCESS_TOKEN=your_github_token
-TELEX_WEBHOOK_URL=your_telex_webhook_url
-SLOW_QUERY_THRESHOLD=0.5  # (optional, in seconds)
-DEBUG=True  # Set to False in production
+TELEX_WEBHOOK_URL=https://ping.telex.im/v1/webhooks/YOUR_WEBHOOK_ID
+SLOW_QUERY_THRESHOLD=0.5
+DEBUG=True
 ```
+
+Replace `YOUR_WEBHOOK_ID` with the actual webhook URL from Telex.
 
 ---
 
 ## Usage
-
-### 1. Run Migrations
-```sh
-$ python manage.py migrate
+### 🔹 **Start the Django Server**
+```bash
+python manage.py runserver
 ```
 
-### 2. Start the Server
-```sh
-$ python manage.py runserver
+### 🔹 **Trigger Monitoring Data Collection**
+Use the `/djangotelex/tick` endpoint to initiate the monitoring process:
+```bash
+curl -X POST http://127.0.0.1:8000/djangotelex/tick
+```
+_Response:_
+```json
+{"status": "accepted"}
 ```
 
-### 3. Test the APM
-You can test the commit analysis and error monitoring by making a **POST request** to the `/djangotelex/tick` endpoint.
-
-#### Using cURL
-```sh
-curl -X POST "https://django-telex-testing.onrender.com/djangotelex/tick" \
-     -H "Content-Type: application/json" \
-     -d '{"repo_name": "YOUR_USERNAME/YOUR_REPO", "token": "YOUR_GITHUB_TOKEN"}'
+### 🔹 **Check Integration Details**
+Visit `/djangotelex/integration.json` in your browser:
 ```
+http://127.0.0.1:8000/djangotelex/integration.json
+```
+This will return the integration details in JSON format.
 
-#### Using Postman
-1. Open **Postman**.
-2. Select **POST** as the method.
-3. Enter the URL: `https://django-telex-testing.onrender.com/djangotelex/tick`
-4. Go to the **Body** tab → Select **raw** → Choose **JSON** format.
-5. Enter the payload:
-   ```json
-   {
-      "repo_name": "YOUR_USERNAME/YOUR_REPO",
-      "token": "YOUR_GITHUB_TOKEN"
-   }
-   ```
-6. Click **Send**.
+---
 
-### 4. Expected Response
+## API Endpoints
+| Endpoint                     | Method | Description |
+|------------------------------|--------|-------------|
+| `/djangotelex/tick`          | POST   | Triggers monitoring data collection and sends reports to Telex. |
+| `/djangotelex/integration.json` | GET    | Returns integration metadata about the monitoring service. |
+| `/djangotelex/get_errors`    | GET    | Fetches a list of recent errors stored in the database. |
+
+---
+
+## How It Works
+1. **Error Tracking:** Captures application errors and logs them into the `ErrorLog` model.
+2. **Performance Monitoring:** Measures slow queries and response times from Django’s database connection.
+3. **Code Quality Metrics:** Simulates static analysis for complexity, test coverage, and code smells.
+4. **Webhook Reporting:** Formats collected data into a report and sends it to the configured Telex webhook.
+
+---
+
+## Example Monitoring Report
+A sample report sent to the webhook might look like:
 ```json
 {
-    "status": "commit analysis started"
+    "message": "🚨 *Error Logs:*\nNo recent errors.\n\n📊 *Performance:*\nAvg Response Time: 120ms, Slow Queries: 2, DB Connection: Healthy\n\n🛠 *Code Quality:*\nComplexity Issues: 3, Code Smells: 5, Test Coverage: 85%",
+    "username": "Django Tracker",
+    "event_name": "Reports",
+    "status": "error"
 }
 ```
 
-If everything is set up correctly, you should receive a **report** in your Telex webhook channel containing **error logs, performance insights, and code quality analysis**.
-
 ---
 
-## Troubleshooting
-
-### 1. No Message in Telex Webhook
-- Ensure `TELEX_WEBHOOK_URL` is correctly set in `.env`.
-- Test manually:
-  ```sh
-  curl -X POST "YOUR_TELEX_WEBHOOK_URL" -H "Content-Type: application/json" -d '{"message": "Test message", "username": "Django APM"}'
-  ```
-
-### 2. GitHub API Returns 403 (Forbidden)
-- Ensure your **GitHub token** has the required permissions:
-  - `repo`
-  - `contents`
-  - `workflow`
-  - `admin:repo_hook`
-
-- Test manually:
-  ```sh
-  curl -H "Authorization: token YOUR_GITHUB_TOKEN" \
-       -H "Accept: application/vnd.github.v3+json" \
-       https://api.github.com/repos/YOUR_USERNAME/YOUR_REPO/commits
-  ```
-
-### 3. Django Shows CSRF Verification Error
-- Use **Postman** or **cURL** with the `-H "X-CSRFToken"` header.
-- Alternatively, disable CSRF verification in `views.py` (for testing only):
-  ```python
-  from django.views.decorators.csrf import csrf_exempt
-  @csrf_exempt
-  def tick(request):
-      ...
-  ```
-
----
-
-## Contributing
-1. Fork the repo.
-2. Create a new branch (`git checkout -b feature-branch`).
-3. Commit your changes (`git commit -m "Add new feature"`).
-4. Push to the branch (`git push origin feature-branch`).
-5. Open a Pull Request.
+## Author
+👤 **Hetty**
 
 ---
 
 ## License
-This project is licensed under the **MIT License**.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 ## Contributions
-Pull requests are welcome! Please follow the contribution guidelines before submitting changes.
+Contributions are welcome! Feel free to fork the repository and submit a pull request.
+
+---
 
 ## Author
 [Henrietta Onoge](https://github.com/Samuelhetty)
