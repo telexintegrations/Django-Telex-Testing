@@ -55,7 +55,7 @@ def telex_integration(request):
                 }
             ],
             "settings": [
-                {"label": "interval", "type": "text", "required": True, "default": "*/20 * * * *"},
+                {"label": "interval", "type": "text", "required": True, "default": "*/1 * * * *"},
                 {"label": "GitHub Repo Name", "type": "text", "required": True, "default": ""},
                 {"label": "GitHub Repo URL", "type": "text", "required": True, "default": ""},
                 {"label": "GitHub Access Token", "type": "password", "required": True, "default": ""}
