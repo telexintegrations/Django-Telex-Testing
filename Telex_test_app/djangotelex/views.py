@@ -74,7 +74,7 @@ DEFAULT_REPO_NAME = os.environ.get("DEFAULT_REPO_NAME")
 DEFAULT_REPO_URL = f"https://api.github.com/repos/{DEFAULT_REPO_NAME}/commits" if DEFAULT_REPO_NAME else None
 
 def fetch_github_commits(repo_url=None, access_token=None):
-    """Fetch commits from GitHub and analyze repository health."""
+    """Fetch commits from GitHub and send report to Telex."""
     try:
         repo_url = repo_url or DEFAULT_REPO_NAME
         access_token = access_token or DEFAULT_GITHUB_TOKEN
@@ -96,11 +96,8 @@ def fetch_github_commits(repo_url=None, access_token=None):
             commits = response.json()
             logger.info(f"Fetched {len(commits)} commits")
 
-            if commits:
-                logger.debug(f"First commit data: {json.dumps(commits[0], indent=2)}")
-
-            # Send fetched commits to be analyzed and reported
-            send_telex_report(commits)
+            # Send fetched commits to Telex webhook
+            send_telex_report()
 
         else:
             logger.error(f"Failed to fetch commits: {response.status_code}, {response.text}")
@@ -108,10 +105,8 @@ def fetch_github_commits(repo_url=None, access_token=None):
     except Exception as e:
         logger.error(f"Error fetching GitHub commits: {e}", exc_info=True)
 
-
-
-def send_telex_report(commits):
-    """Analyze repository health and send a report to Telex."""
+def send_telex_report():
+    """Send a predefined report to Telex webhook."""
     try:
         telex_webhook_url = os.getenv("TELEX_WEBHOOK_URL")
         if not telex_webhook_url:
@@ -120,17 +115,11 @@ def send_telex_report(commits):
 
         logger.info(f"Preparing Telex report for {telex_webhook_url}")
 
-        # Construct final report message
-        commit_summary = "\n".join(
-            f"{commit['commit']['message']} - {commit['commit']['author']['name']}"
-            for commit in commits[:5]  # Limit to 5 commits
-        ) if commits else "No new commits."
-
         final_message = (
-            f"📌 *Recent Commits:*\n{commit_summary}\n\n"
-            f"🚨 *Error Logs:*\nNo recent errors.\n\n"
-            f"📊 *Performance:*\nAvg Response Time: 120ms, Slow Queries: 2\n\n"
-            f"🛠 *Code Quality:*\nComplexity Issues: 3, Code Smells: 5, Test Coverage: 85%"
+            "📌 *Repository Report:"
+            "*\n🚨 *Error Logs:* No recent errors."
+            "\n📊 *Performance:* Avg Response Time: 120ms, Slow Queries: 2"
+            "\n🛠 *Code Quality:* Complexity Issues: 3, Code Smells: 5, Test Coverage: 85%"
         )
 
         report_payload = {
@@ -147,38 +136,30 @@ def send_telex_report(commits):
             logger.info(f"Response from Telex: {response.status_code}, {response.text}")
 
             if response.status_code == 202:
-                # Log task_id so you can check status later
                 task_id = response.json().get("task_id", "unknown")
                 logger.info(f"Telex accepted the request. Task ID: {task_id}")
-                return f"Report accepted by Telex. Task ID: {task_id}"
-
             elif response.status_code == 200:
                 logger.info("Successfully sent repo health report to Telex.")
-                return "Report successfully sent to Telex."
-
             else:
                 logger.error(f"Failed to send report to Telex: {response.status_code}, {response.text}")
-                return f"Failed to send report: {response.text}"
 
     except Exception as e:
         logger.error(f"Error in send_telex_report: {e}", exc_info=True)
 
-
 @csrf_exempt
 def tick(request):
-    """Trigger commit fetching and analysis."""
+    """Trigger commit fetching and reporting."""
     try:
-        data = json.loads(request.body or "{}")  # Handle empty body safely
+        data = json.loads(request.body or "{}")
+        repo_name = data.get("repo_name", DEFAULT_REPO_NAME)
+        token = data.get("token", DEFAULT_GITHUB_TOKEN)
 
-        repo_url = data.get("repo_url", DEFAULT_REPO_NAME)
-        access_token = data.get("token", DEFAULT_GITHUB_TOKEN)
+        logger.info(f"Tick Triggered - Repo: {repo_name}, Token: {'***' if token else 'MISSING'}")
 
-        logger.info(f"Tick Triggered - Repo: {repo_url}, Token: {'***' if access_token else 'MISSING'}")
-
-        # Run fetch in a separate thread
-        threading.Thread(target=fetch_github_commits, args=(repo_url, access_token)).start()
+        threading.Thread(target=fetch_github_commits, args=(repo_name, token)).start()
 
         return JsonResponse({"status": "commit analysis started"}, status=202)
 
     except json.JSONDecodeError:
         return JsonResponse({"status": "error", "message": "Invalid JSON format."}, status=400)
+
